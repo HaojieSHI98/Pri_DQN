@@ -1,0 +1,3 @@
+[33m[12-05 14:23:04 MainThread @tensorboard.py:34][0m [5m[33mWRN[0m [tensorboard] logdir is None, will save tensorboard files to train_log/new_train
+View the data using: tensorboard --logdir=./train_log/new_train --host=10.17.52.163
+[32m[12-05 14:23:08 MainThread @new_train.py:250][0m eval_agent done, (steps, eval_reward): (200, 11.682291666666666)
