@@ -31,7 +31,7 @@ from per_alg import PrioritizedDoubleDQN, PrioritizedDQN
 from proportional_per import ProportionalPER
 # from utils import get_player
 
-MEMORY_SIZE = 1e6
+MEMORY_SIZE = 2e5
 MEMORY_WARMUP_SIZE = MEMORY_SIZE
 IMAGE_SIZE = (64, 64)
 CONTEXT_LEN = 4
