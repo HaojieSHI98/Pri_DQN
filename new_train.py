@@ -29,7 +29,7 @@ from atari_model import AtariModel
 from parl.utils import logger, summary
 from per_alg import PrioritizedDoubleDQN, PrioritizedDQN
 from proportional_per import ProportionalPER
-from utils import get_player
+# from utils import get_player
 
 MEMORY_SIZE = 1e6
 MEMORY_WARMUP_SIZE = MEMORY_SIZE
@@ -256,10 +256,10 @@ def main():
                     total_steps, eval_reward))
             summary.add_scalar('eval/reward', eval_reward,
                                total_steps)
-            modeldir = modeldir + '/itr+{}'.format(total_step)
-            if not os.path.exists(modeldir):
-                os.mkdir(modeldir)
-            agent.save(modeldir)
+            modeldir_ = modeldir + '/itr+{}'.format(total_step)
+            if not os.path.exists(modeldir_):
+                os.mkdir(modeldir_)
+            agent.save(modeldir_)
 
     pbar.close()
 
