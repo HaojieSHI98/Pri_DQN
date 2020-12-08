@@ -73,6 +73,7 @@ class MonitorEnv(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
         obs = np.squeeze(obs)
+        rew = args.Rp*rew
         self._current_reward += rew
         self._num_steps += 1
         self._total_steps += 1
@@ -195,13 +196,15 @@ def main():
     # raise NotImplementedError
     # Init Prioritized Replay Memory
     per = ProportionalPER(alpha=0.6, seg_num=args.batch_size, size=MEMORY_SIZE)
-    logdir = os.path.join(args.logdir,args.suffix)
+    suffix = args.suffix+"_Rp{}".format(args.Rp)
+    logdir = os.path.join(args.logdir,suffix)
     if not os.path.exists(logdir):
         os.mkdir(logdir)
     logger.set_dir(logdir)
-    modeldir = os.path.join(args.modeldir,args.suffix)
+    modeldir = os.path.join(args.modeldir,suffix)
     if not os.path.exists(modeldir):
         os.mkdir(modeldir)
+    
     # Prepare PARL agent
     act_dim = env.action_space.n
     model = AtariModel(act_dim)
@@ -298,6 +301,11 @@ if __name__ == '__main__':
         type=str,
         default='first trian',
         help='suffix')
+    parser.add_argument(
+        '--Rp',
+        type=float,
+        default=1,
+        help='Reward propotion')
     args = parser.parse_args()
     assert args.alg in ['dqn','ddqn'], \
         'used algorithm should be dqn or ddqn (double dqn)'
