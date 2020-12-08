@@ -259,9 +259,10 @@ def main():
                     total_steps, eval_reward))
             summary.add_scalar('eval/reward', eval_reward,
                                total_steps)
-            modeldir_ = modeldir + '/itr+{}'.format(total_step)
+            modeldir_ = os.path.join(modeldir,'itr_{}'.format(total_step))
             if not os.path.exists(modeldir_):
                 os.mkdir(modeldir_)
+            print('save model!',modeldir_)
             agent.save(modeldir_)
 
     pbar.close()
