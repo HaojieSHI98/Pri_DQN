@@ -231,10 +231,12 @@ def main():
     test_flag = 0
     total_steps = 0
     pbar = tqdm(total=args.train_total_steps)
+    save_steps =0 
     while total_steps < args.train_total_steps:
         # start epoch
         total_reward, steps, loss = run_episode(env, agent, per, train=True)
         total_steps += steps
+        save_steps +=steps
         pbar.set_description('[train]exploration:{}'.format(agent.exploration))
         summary.add_scalar('train/score', total_reward,
                            total_steps)
@@ -259,11 +261,13 @@ def main():
                     total_steps, eval_reward))
             summary.add_scalar('eval/reward', eval_reward,
                                total_steps)
-            modeldir_ = os.path.join(modeldir,'itr_{}'.format(total_step))
+        if save_steps>=100000:
+            modeldir_ = os.path.join(modeldir,'itr_{}'.format(total_steps))
             if not os.path.exists(modeldir_):
                 os.mkdir(modeldir_)
             print('save model!',modeldir_)
             agent.save(modeldir_)
+            save_steps = 0
 
     pbar.close()
 
