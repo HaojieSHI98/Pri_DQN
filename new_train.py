@@ -215,7 +215,8 @@ def main():
         algorithm = PrioritizedDQN(
             model, act_dim=act_dim, gamma=GAMMA, lr=LEARNING_RATE)
     agent = AtariAgent(algorithm, act_dim=act_dim, update_freq=UPDATE_FREQ)
-
+    if os.path.exists(args.load):
+        agent.restore(args.load)
     # Replay memory warmup
     total_step = 0
     with tqdm(total=MEMORY_SIZE, desc='[Replay Memory Warm Up]') as pbar:
@@ -311,6 +312,11 @@ if __name__ == '__main__':
         type=float,
         default=1,
         help='Reward propotion')
+    parser.add_argument(
+        '--load',
+        type=str,
+        default=None,
+        help='Load path')
     args = parser.parse_args()
     assert args.alg in ['dqn','ddqn'], \
         'used algorithm should be dqn or ddqn (double dqn)'
