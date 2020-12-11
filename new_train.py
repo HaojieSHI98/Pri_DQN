@@ -29,6 +29,7 @@ from atari_model import AtariModel
 from parl.utils import logger, summary
 from per_alg import PrioritizedDoubleDQN, PrioritizedDQN
 from proportional_per import ProportionalPER
+from pseudoslam.envs.test import MonitorEnv
 # from utils import get_player
 
 MEMORY_SIZE = 2e5
@@ -40,61 +41,7 @@ UPDATE_FREQ = 4
 GAMMA = 0.99
 LEARNING_RATE = 0.00025 / 4
 
-class MonitorEnv(gym.Wrapper):
-    def __init__(self, env=None,param={'vel':1,'foot':0,'tau':0}):
-        """Record episodes stats prior to EpisodicLifeEnv, etc."""
-        gym.Wrapper.__init__(self, env)
-        self._current_reward = None
-        self._num_steps = None
-        self._total_steps = None
-        self._episode_rewards = []
-        self._episode_lengths = []
-        self._num_episodes = 0
-        self._num_returned = 0
-        self.param = param
 
-    def reset(self, **kwargs):
-        obs = self.env.reset(**kwargs).squeeze()
-        # obs = obs.reshape(64,64)
-
-        if self._total_steps is None:
-            self._total_steps = sum(self._episode_lengths)
-
-        if self._current_reward is not None:
-            self._episode_rewards.append(self._current_reward)
-            self._episode_lengths.append(self._num_steps)
-            self._num_episodes += 1
-
-        self._current_reward = 0
-        self._num_steps = 0
-
-        return obs
-
-    def step(self, action):
-        obs, rew, done, info = self.env.step(action)
-        obs = np.squeeze(obs)
-        rew = args.Rp*rew
-        self._current_reward += rew
-        self._num_steps += 1
-        self._total_steps += 1
-        return (obs, rew, done, info)
-
-    def get_episode_rewards(self):
-        return self._episode_rewards
-
-    def get_current_rewards(self):
-        return self._current_reward
-    def get_episode_lengths(self):
-        return self._episode_lengths
-
-    def get_total_steps(self):
-        return self._total_steps
-
-    def next_episode_results(self):
-        for i in range(self._num_returned, len(self._episode_rewards)):
-            yield (self._episode_rewards[i], self._episode_lengths[i])
-        self._num_returned = len(self._episode_rewards)
-    
 
 def beta_adder(init_beta, step_size=0.0001):
     beta = init_beta
@@ -123,6 +70,7 @@ def process_transitions(transitions):
 
 
 def run_episode(env, agent, per, mem=None, warmup=False, train=False):
+    total_info = {}
     total_reward = 0
     all_cost = []
     traj = deque(maxlen=CONTEXT_LEN)
@@ -139,8 +87,15 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
         traj.append(obs)
         context = np.stack(traj, axis=0)
         action = agent.sample(context, decay_exploration=decay_exploration)
-        next_obs, reward, terminal, _ = env.step(action)
-        transition = [obs, action, reward, next_obs, terminal]
+        next_obs, reward, terminal, info = env.step(action)
+        rewards = reward
+        for key in info.keys():
+            if key not in total_info.keys():
+                total_info[key] = info[key]
+            else:
+                total_info[key] += info[key]
+            rewards +=info[key]
+        transition = [obs, action, rewards, next_obs, terminal]
         if warmup:
             mem.append(transition)
         if train:
@@ -159,7 +114,7 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
         if terminal:
             break
 
-    return total_reward, steps, np.mean(all_cost)
+    return total_reward, steps, np.mean(all_cost),total_info
 
 
 def run_evaluate_episode(env, agent):
@@ -189,14 +144,14 @@ def main():
     #     frame_skip=FRAME_SKIP,
     #     context_len=CONTEXT_LEN)
     env = gym.make("pseudoslam:RobotExploration-v0")
-    env = MonitorEnv(env)
+    env = MonitorEnv(env,param={'goal':args.goal})
 
     # obs = env.reset()
     # print(obs.shape)
     # raise NotImplementedError
     # Init Prioritized Replay Memory
     per = ProportionalPER(alpha=0.6, seg_num=args.batch_size, size=MEMORY_SIZE)
-    suffix = args.suffix+"_Rp{}".format(args.Rp)
+    suffix = args.suffix+"_Rp{}_Goal{}".format(args.Rp,args.goal)
     logdir = os.path.join(args.logdir,suffix)
     if not os.path.exists(logdir):
         os.mkdir(logdir)
@@ -222,7 +177,7 @@ def main():
     with tqdm(total=MEMORY_SIZE, desc='[Replay Memory Warm Up]') as pbar:
         mem = []
         while total_step < MEMORY_WARMUP_SIZE:
-            total_reward, steps, _ = run_episode(
+            total_reward, steps, _ ,_= run_episode(
                 env, agent, per, mem=mem, warmup=True)
             total_step += steps
             pbar.update(steps)
@@ -235,7 +190,7 @@ def main():
     save_steps =0 
     while total_steps < args.train_total_steps:
         # start epoch
-        total_reward, steps, loss = run_episode(env, agent, per, train=True)
+        total_reward, steps, loss,info = run_episode(env, agent, per, train=True)
         total_steps += steps
         save_steps +=steps
         pbar.set_description('[train]exploration:{}'.format(agent.exploration))
@@ -245,6 +200,11 @@ def main():
                            total_steps)  # mean of total loss
         summary.add_scalar('train/exploration',
                            agent.exploration, total_steps)
+        summary.add_scalar('train/steps',
+                           steps, total_steps)
+        for key in info.keys():
+            summary.add_scalar('train/'+key,
+                           info[key], total_steps)
         pbar.update(steps)
 
         if total_steps // args.test_every_steps >= test_flag:
@@ -315,8 +275,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--load',
         type=str,
-        default=None,
+        default='a',
         help='Load path')
+    parser.add_argument(
+        '--goal',
+        type=float,
+        default=0,
+        help='Goal Reward')
     args = parser.parse_args()
     assert args.alg in ['dqn','ddqn'], \
         'used algorithm should be dqn or ddqn (double dqn)'
