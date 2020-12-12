@@ -95,7 +95,7 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
             else:
                 total_info[key] += info[key]
             rewards +=info[key]
-        transition = [obs, action, rewards, next_obs, terminal]
+        transition = [obs, action, args.Rp*rewards, next_obs, terminal]
         if warmup:
             mem.append(transition)
         if train:
