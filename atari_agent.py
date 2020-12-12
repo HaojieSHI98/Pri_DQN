@@ -17,7 +17,7 @@ import paddle.fluid as fluid
 import parl
 from parl import layers
 
-IMAGE_SIZE = (64, 64)
+IMAGE_SIZE = (128, 64)
 CONTEXT_LEN = 4
 
 

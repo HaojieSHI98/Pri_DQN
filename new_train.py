@@ -1,3 +1,4 @@
+
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +35,7 @@ from pseudoslam.envs.test import MonitorEnv
 
 MEMORY_SIZE = 2e5
 MEMORY_WARMUP_SIZE = MEMORY_SIZE
-IMAGE_SIZE = (64, 64)
+IMAGE_SIZE = (128, 64)
 CONTEXT_LEN = 4
 FRAME_SKIP = 4
 UPDATE_FREQ = 4
@@ -144,14 +145,14 @@ def main():
     #     frame_skip=FRAME_SKIP,
     #     context_len=CONTEXT_LEN)
     env = gym.make("pseudoslam:RobotExploration-v0")
-    env = MonitorEnv(env,param={'goal':args.goal})
+    env = MonitorEnv(env,param={'goal':args.goal,'obs':args.obs})
 
     # obs = env.reset()
     # print(obs.shape)
     # raise NotImplementedError
     # Init Prioritized Replay Memory
     per = ProportionalPER(alpha=0.6, seg_num=args.batch_size, size=MEMORY_SIZE)
-    suffix = args.suffix+"_Rp{}_Goal{}".format(args.Rp,args.goal)
+    suffix = args.suffix+"_Rp{}_Goal{}_Obs{}".format(args.Rp,args.goal,args.obs)
     logdir = os.path.join(args.logdir,suffix)
     if not os.path.exists(logdir):
         os.mkdir(logdir)
@@ -255,12 +256,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--logdir',
         type=str,
-        default='/home/disk1/stone/paddlelog',
+        default='~/stone/House/log',
         help='logdir')
     parser.add_argument(
         '--modeldir',
         type=str,
-        default='/home/disk1/stone/paddlemodel/',
+        default='~/stone/House/model',
         help='modeldir')
     parser.add_argument(
         '--suffix',
@@ -280,6 +281,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--goal',
         type=float,
+        default=0,
+        help='Goal Reward')
+    parser.add_argument(
+        '--obs',
+        type=int,
         default=0,
         help='Goal Reward')
     args = parser.parse_args()
