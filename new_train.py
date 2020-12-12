@@ -35,8 +35,8 @@ from pseudoslam.envs.test import MonitorEnv
 
 MEMORY_SIZE = 2e5
 MEMORY_WARMUP_SIZE = MEMORY_SIZE
-IMAGE_SIZE = (128, 64)
-CONTEXT_LEN = 4
+IMAGE_SIZE = (64, 64)
+CONTEXT_LEN = 5
 FRAME_SKIP = 4
 UPDATE_FREQ = 4
 GAMMA = 0.99
@@ -75,7 +75,7 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
     total_reward = 0
     all_cost = []
     traj = deque(maxlen=CONTEXT_LEN)
-    obs = env.reset()
+    obs,obs_add = env.reset()
     for _ in range(CONTEXT_LEN - 1):
         traj.append(np.zeros(obs.shape))
     steps = 0
@@ -86,9 +86,12 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
     while True:
         steps += 1
         traj.append(obs)
-        context = np.stack(traj, axis=0)
+        arr = traj
+        arr.append(obs_add)
+        context = np.stack(arr, axis=0)
+        # print(context.shape)
         action = agent.sample(context, decay_exploration=decay_exploration)
-        next_obs, reward, terminal, info = env.step(action)
+        next_obs, reward, terminal, info,obs_add_next = env.step(action)
         rewards = reward
         for key in info.keys():
             if key not in total_info.keys():
@@ -112,6 +115,7 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
 
         total_reward += reward
         obs = next_obs
+        obs_add = obs_add_next
         if terminal:
             break
 
@@ -119,16 +123,18 @@ def run_episode(env, agent, per, mem=None, warmup=False, train=False):
 
 
 def run_evaluate_episode(env, agent):
-    obs = env.reset()
+    obs,obs_add = env.reset()
     traj = deque(maxlen=CONTEXT_LEN)
     for _ in range(CONTEXT_LEN - 1):
         traj.append(np.zeros(obs.shape))
     total_reward = 0
     while True:
         traj.append(obs)
+        arr = traj
+        arr.append(obs_add)
         context = np.stack(traj, axis=0)
         action = agent.predict(context)
-        obs, reward, isOver, info = env.step(action)
+        obs, reward, isOver, info,obs_add = env.step(action)
         total_reward += reward
         if isOver:
             break
